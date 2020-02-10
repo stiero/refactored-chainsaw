@@ -7,6 +7,11 @@ Created on Mon Feb 10 16:03:31 2020
 """
 
 import pandas as pd
+from collections import Counter
+from nltk.tokenize import word_tokenize
+
+
+filename = "recipes_82k.csv"
 
 class DataGetter():
     
@@ -33,7 +38,7 @@ class DataGetter():
         self.serves = [[sublist] for sublist in self.df['serves'].to_list()]
         self.tags = [[sublist] for sublist in self.df['tags'].to_list()]
         
-
+        self.tags_count = Counter([tag for taglist in self.tags for tag in taglist])
             
     
     
