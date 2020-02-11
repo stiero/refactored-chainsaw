@@ -33,12 +33,14 @@ from tqdm import tqdm
 
 df = pd.read_csv("recipes_82k.csv")
 
+df.drop(["category", "image"], inplace=True, axis=1)
+
 #Handling missing data
 df['cuisine'].fillna('UNK_Cuisine', inplace=True)
 df['prep_time'].fillna('UNK_Time', inplace=True)
 df['serves'].fillna('UNK_Serves', inplace=True)
-df['tags'].fillna("Unk_Tag", inplace=True)
-
+#df['tags'].fillna("Unk_Tag", inplace=True)
+df.dropna(inplace = True)
 df = df.where(pd.notnull(df), None)
 
 
@@ -58,7 +60,9 @@ serves = list(df['serves'])
 tags = list(df['tags'])
 tags = [str(tag).split(",") for tag in tags]
 
-tags_flat = list(set(tag for tag_list in tags for tag in tag_list))
+tags_flat = [tag for tag_list in tags for tag in tag_list]
+
+tags_unique = list(set(tags_flat))
 
 
 Counter(tags)
