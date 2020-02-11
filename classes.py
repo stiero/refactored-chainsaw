@@ -25,20 +25,19 @@ class DataGetter():
     def __init__(self, filename):
         
         self.df = pd.read_csv(filename)
+
+        self.df.drop(["category", "image"], inplace=True, axis=1)
+
+        #Handling missing data
+        self.df['cuisine'].fillna('UNK_Cuisine', inplace=True)
+        self.df['prep_time'].fillna('UNK_Time', inplace=True)
+        self.df['serves'].fillna('UNK_Serves', inplace=True)
+        #df['tags'].fillna("Unk_Tag", inplace=True)
+        self.df.dropna(inplace = True)
+        df = df.where(pd.notnull(df), None)
         
-        self.cooking_method = self.df['cooking_method'].to_list()
         
-        self.cuisine = self.df['cuisine'].to_list()
-        self.ingredients = self.df['ingredients'].to_list()
-        
-        self.prep_time = [[sublist] for sublist in self.df['prep_time'].to_list()]
-        
-        self.recipe_name = [[sublist] for sublist in self.df['recipe_name'].to_list()]
-        
-        self.serves = [[sublist] for sublist in self.df['serves'].to_list()]
-        self.tags = [[sublist] for sublist in self.df['tags'].to_list()]
-        
-        self.tags_count = Counter([tag for taglist in self.tags for tag in taglist])
+        df = df[df.duplicated() == False]
             
     
     

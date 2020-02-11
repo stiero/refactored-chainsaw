@@ -15,15 +15,17 @@ from nltk.tokenize import word_tokenize
 import nltk
 nltk.download('punkt')
 nltk.download('wordnet')
+nltk.download('stopwords')
 
 from nltk.stem import WordNetLemmatizer
 lemmatizer = WordNetLemmatizer()
 
 from nltk.corpus import stopwords
-stop_words = set(stopwords.words('english'))
+stop_words = stopwords.words('english')
+stop_words.extend(["minutes", "hours", "seconds", "teaspoon"])
 
 import string
-punctuations = '!"#$%&\'()*+,-/:;<=>?@[\\]^_`{|}~'
+punctuations = '!"#$%&\'()*+,.-/:;<=>?@[\\]^_`{|}~'
 table = str.maketrans('', '', punctuations)
 
 import difflib
@@ -65,7 +67,7 @@ tags_flat = [tag for tag_list in tags for tag in tag_list]
 tags_unique = list(set(tags_flat))
 
 
-Counter(tags)
+Counter(tags_flat)
 
 
 
@@ -90,16 +92,37 @@ nlp = spacy.load("en_core_web_lg")
 
 columns = list(df.columns)
 
+aa = []
+
+for elem in tqdm(cooking_method):
+    elem = elem.translate(table)
+    elem = lemmatizer.lemmatize(elem)
+
+    elem = word_tokenize(elem)
+    # elem = [word.translate(puncts) for word in elem]
+    elem = [word.lower() for word in elem if word not in stop_words]
+    
+    # elem = ' '.join(elem)
+
+    # for i, word in enumerate(elem):
+    #     if elem[i] == '' and elem[i+1] == '':
+    #         del elem[i+1]
+    
+    aa.append(elem)
+
+
+
 bb = []
 
 for elem in tqdm(ingredients):
     elem = elem.translate(table)
-    # elem = lemmatizer.lemmatize(elem)
-    # elem = word_tokenize(elem)
+    elem = lemmatizer.lemmatize(elem)
+    # elem = elem.split(",")
+    elem = word_tokenize(elem)
     # elem = [word.translate(puncts) for word in elem]
     elem = [word.lower() for word in elem if word not in stop_words]
     
-    elem = ' '.join(elem)
+    # elem = ' '.join(elem)
 
     # for i, word in enumerate(elem):
     #     if elem[i] == '' and elem[i+1] == '':
@@ -107,7 +130,15 @@ for elem in tqdm(ingredients):
     
     bb.append(elem)
 
-bb = []
+
+
+
+
+
+
+
+
+aa = []
 
 for ing_list in tqdm(ingredients):
     simplified_ing_list = []
