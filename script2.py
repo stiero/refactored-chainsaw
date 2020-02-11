@@ -38,6 +38,6 @@ from gensim.test.utils import get_tmpfile
 
 fname = get_tmpfile("fasttext.model")
 
-model.save(fname)
+model.save("fasttext.model")
 
-model = FastText.load_fasttext_format('fasttext.format')
+model1 = FastText.load('fasttext.model')
