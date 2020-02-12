@@ -135,6 +135,19 @@ for elem in tqdm(ingredients):
 
 
 
+tok_recipe_name = []
+
+for elem in tqdm(recipe_name):
+    elem = elem.translate(table)
+    elem = lemmatizer.lemmatize(elem)
+    elem = word_tokenize(elem)
+    elem = [word.lower() for word in elem if word not in stop_words and word.isalpha()]
+    
+    tok_recipe_name.append(elem)
+
+
+
+
 #Length of text
     
 len_cooking = []
@@ -151,6 +164,13 @@ for subl in tok_ingredients:
 max(len_ingredients)
 
 
+len_recipe_name = []
+
+for subl in tok_recipe_name:
+    len_recipe_name.append(len(subl))
+    
+max(len_recipe_name)
+
 
 import seaborn as sns
 sns.kdeplot(len_cooking)
@@ -165,12 +185,18 @@ for i, subl in enumerate(tok_cooking_method):
 for i, subl in enumerate(tok_ingredients):
     subl = subl[:100]
     tok_ingredients[i] = subl
+    
+for i, subl in enumerate(tok_recipe_name):
+    subl = subl[:10]
+    tok_recipe_name[i] = subl
 
 
 tok_concat = []
 
-for i, j in zip(tok_cooking_method, tok_ingredients):
-    tok_concat.append(i + j)
+for i, j, k in zip(tok_cooking_method, tok_ingredients, tok_recipe_name):
+    tok_concat.append(i + j + k)
+
+
 
 
 
@@ -282,6 +308,14 @@ for i, tag_list in enumerate(tags):
 #     y = [to_categorical(tags2id[i], num_classes=ntags) for i in tag_list]
 #     y_train.append(y)
     
+    
+    
+tot_tags = len(tags_flat)
+tag_weights = dict(Counter(tags_flat))
+
+tag_weights = {tags2id[k]:tot_tags/v for k,v in tag_weights.items()}
+
+
 
 y_train = y[:train_size]
 y_val = y[train_size-1:]
@@ -294,7 +328,8 @@ import numpy as np
 from keras.callbacks import EarlyStopping
 from keras.models import Input, Model
 from keras.layers.core import Dense, Dropout, Flatten
-from keras.layers import Embedding, Bidirectional, LSTM
+from keras.layers import Embedding, Bidirectional, LSTM, \
+    GlobalMaxPooling1D, GlobalAveragePooling1D, Concatenate, concatenate
 from keras.layers.convolutional import Conv1D
 from keras.optimizers import Adam
 
@@ -304,11 +339,16 @@ import tensorflow as tf
 
 
 batch_size = 32
-nb_epochs = 1
+nb_epochs = 10
 
 input_ = Input(shape=(max_text_len,vector_size))
 
-model = Bidirectional(LSTM(units=100, recurrent_dropout=0.1))(input_)
+model = Bidirectional(LSTM(units=100, recurrent_dropout=0.1, return_sequences=True))(input_)
+avg_pool = GlobalAveragePooling1D()(model)
+max_pool = GlobalMaxPooling1D()(model)
+conc = concatenate([avg_pool, max_pool])
+model = Dense(64, activation="relu")(conc)
+model = Dropout(0.1)(model)
 out = Dense(ntags, activation="softmax")(model)
 model = Model(input_, out)
 
@@ -325,8 +365,7 @@ history = model.fit(X_train, y_train,
               epochs=nb_epochs,
               validation_data=(X_val, y_val),
               callbacks=[EarlyStopping(min_delta=0.00025, patience=2)],
-                verbose=1,
-                class_weight = tag_weights)
+              verbose=1) 
 
 
 
@@ -344,10 +383,7 @@ plt.legend()
 plt.show()
 
 
-tot_tags = len(tags_flat)
-tag_weights = dict(Counter(tags_flat))
 
-tag_weights = {tags2id[k]:tot_tags/v for k,v in tag_weights.items()}
 
 
 
