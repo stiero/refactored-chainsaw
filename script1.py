@@ -22,7 +22,7 @@ lemmatizer = WordNetLemmatizer()
 
 from nltk.corpus import stopwords
 stop_words = stopwords.words('english')
-stop_words.extend(["minutes", "hours", "seconds", "teaspoon", "finely", "thinly", "briskly", "occasinally", "gently"])
+stop_words.extend(["minutes", "hours", "seconds", "teaspoon", "spoon"])
 
 import string
 punctuations = '!"#$%&\'()*+,.-/:;<=>?@[\\]^_`{|}~'
@@ -54,6 +54,8 @@ df = df.sample(frac=1, random_state=1234)
 
 cooking_method = df['cooking_method']
 
+cuisine = list(df['cuisine'])
+
 ingredients = list(df['ingredients'])
 
 prep_time = list(df['prep_time'])
@@ -84,9 +86,9 @@ def clean_and_tokenise(list_):
 
 
 
-aa = instructions[0]
+# aa = instructions[0]
 
-bb = ingredients[0]
+# bb = ingredients[0]
 
 
 import spacy
@@ -258,7 +260,7 @@ train_size = len(train_indices)
 val_indices = list(range(max(train_indices), total_size))
 val_size = len(val_indices)
 
-max_text_len = 300
+max_text_len = 310
 vector_size = 100
 
 X_train = np.zeros((train_size, max_text_len, vector_size), dtype=K.floatx())
@@ -320,6 +322,8 @@ tag_weights = {tags2id[k]:tot_tags/v for k,v in tag_weights.items()}
 y_train = y[:train_size]
 y_val = y[train_size-1:]
 
+# cuisine_train = np.array(cuisine[:train_size]).reshape(-1,1)
+# cuisine_val = np.array(cuisine[train_size-1:]).reshape(-1,1)
 
 
 from keras.preprocessing.sequence import pad_sequences
@@ -329,7 +333,8 @@ from keras.callbacks import EarlyStopping
 from keras.models import Input, Model
 from keras.layers.core import Dense, Dropout, Flatten
 from keras.layers import Embedding, Bidirectional, LSTM, \
-    GlobalMaxPooling1D, GlobalAveragePooling1D, Concatenate, concatenate
+    GlobalMaxPooling1D, GlobalAveragePooling1D, Concatenate, concatenate, \
+        TimeDistributed, MaxPooling1D, add
 from keras.layers.convolutional import Conv1D
 from keras.optimizers import Adam
 
@@ -339,23 +344,39 @@ import tensorflow as tf
 
 
 batch_size = 32
-nb_epochs = 10
+nb_epochs = 100
+
+# n_cuisines = len(set(cuisine))
+# input_cuisine_vecs = Input(shape=(1,))
+# cuisine_vecs = Embedding(input_dim=n_cuisines, output_dim=100)(input_cuisine_vecs)
+
+
 
 input_ = Input(shape=(max_text_len,vector_size))
 
-model = Bidirectional(LSTM(units=100, recurrent_dropout=0.1, return_sequences=True))(input_)
-avg_pool = GlobalAveragePooling1D()(model)
-max_pool = GlobalMaxPooling1D()(model)
-conc = concatenate([avg_pool, max_pool])
-model = Dense(64, activation="relu")(conc)
+
+model = TimeDistributed(Dense(256, use_bias=False, activation='elu'))(input_)
+# model = Conv1D(filters=32, kernel_size=8, strides=1, 
+#                activation='relu', padding='valid')(input_)
+# model = MaxPooling1D(pool_size=4)(model)
+# model = concatenate([input_, cuisine_vecs], axis=1)
+model = Bidirectional(LSTM(units=50, recurrent_dropout=0.1, return_state = True, return_sequences=True))(model)
+model = Bidirectional(LSTM(units=50, recurrent_dropout=0.2))(model)
+# avg_pool = GlobalAveragePooling1D()(model)
+# max_pool = GlobalMaxPooling1D()(model)
+# # model = Bidirectional(LSTM(units=50, recurrent_dropout=0.1, return_sequences=True))(model)
+# conc = concatenate([avg_pool, max_pool])
+# conc = add([model, input_])
+# model = Flatten()(model)
+model = Dense(64, activation="elu")(model)
 model = Dropout(0.1)(model)
-out = Dense(ntags, activation="softmax")(model)
+out = Dense(ntags, activation="sigmoid")(model)
 model = Model(input_, out)
 
 
 model.summary()
 
-model.compile(loss='categorical_crossentropy',
+model.compile(loss='binary_crossentropy',
               optimizer=Adam(lr=0.0001, decay=1e-6),
               metrics=['accuracy'])
 
@@ -364,13 +385,15 @@ history = model.fit(X_train, y_train,
               shuffle=True,
               epochs=nb_epochs,
               validation_data=(X_val, y_val),
-              callbacks=[EarlyStopping(min_delta=0.00025, patience=2)],
+              callbacks=[EarlyStopping(min_delta=0.00025, patience=2,
+                                       monitor='val_loss')],
+              class_weight = tag_weights,
               verbose=1) 
 
 
 
 
-
+import matplotlib.pyplot as plt
 loss = history.history['loss']
 val_loss = history.history['val_loss']
 epochs = range(1, len(loss) + 1)
@@ -382,13 +405,37 @@ plt.title('Training and validation loss')
 plt.legend()
 plt.show()
 
+from keras.utils import plot_model
+plot_model(model, to_file = 'model.png')
 
+model.save_weights("model_new_vector.h5")
 
-
-
-
+from keras.models import load_model
+model = load_model("model_new_vector.h5")
 
 from scipy import spatial
 
-1 - spatial.distance.cosine(vecs['pasta'], vecs['linguini'])
+1 - spatial.distance.cosine(vecs['orange'], vecs['oranges'])
 
+
+
+cutoff = 0.001
+
+for pred in preds:
+    for val in pred:
+        if cutof
+
+preds = model.predict(X_val, batch_size=32)
+
+testindex = 9283
+
+aa = preds.copy()
+
+
+aa[aa >= 0.1] = 1
+aa[aa < 0.1] = 0
+
+
+print(np.logical_and(aa[testindex]==1, y_val[testindex]==1).sum())
+
+print(len(np.argwhere(aa[testindex])), len(np.argwhere(y_val[testindex])))
